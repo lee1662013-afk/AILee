@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI NEXUS V4.3 | 移动优化版</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet">
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        bgDark: '#0f172a', // Slate 900
+                        cardDark: '#1e293b', // Slate 800
+                        sidebar: '#0b1120', // Darker Slate
+                        primary: '#3b82f6', // Blue 500
+                        accent: '#8b5cf6', // Violet 500
+                        neon: '#00f0ff',
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'system-ui', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        /* 额外的毛玻璃效果和滚动条样式 */
+        body {
+            background-color: #0f172a;
+            color: #e2e8f0;
+            font-family: 'Inter', sans-serif;
+            overflow: hidden; 
+        }
+        
+        /* 毛玻璃卡片 */
+        .glass-card {
+            background: rgba(30, 41, 59, 0.4);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+        .glass-card:hover {
+            background: rgba(30, 41, 59, 0.7);
+            border: 1px solid rgba(59, 130, 246, 0.5);
+            box-shadow: 0 0 20px rgba(59, 130, 246, 0.2);
+            transform: translateY(-2px);
+        }
+
+        /* 自定义滚动条 */
+        .custom-scroll::-webkit-scrollbar { width: 6px; }
+        .custom-scroll::-webkit-scrollbar-track { background: transparent; }
+        .custom-scroll::-webkit-scrollbar-thumb { background: #334155; border-radius: 3px; }
+        .custom-scroll::-webkit-scrollbar-thumb:hover { background: #475569; }
+
+        [v-cloak] { display: none; }
+        
+        /* 侧边栏激活态 */
+        .nav-item.active {
+            background: linear-gradient(90deg, rgba(59, 130, 246, 0.15) 0%, transparent 100%);
+            border-left: 3px solid #3b82f6;
+            color: #60a5fa;
+        }
+    </style>
+</head>
+<body class="h-screen flex w-full text-sm md:text-base">
+
+    <div id="app" v-cloak class="flex w-full h-full">
+        
+        <aside 
+            :class="{ 'translate-x-0': isSidebarOpen, '-translate-x-full': !isSidebarOpen }"
+            class="w-64 bg-sidebar flex-shrink-0 flex flex-col border-r border-slate-800 
+                   fixed inset-y-0 left-0 z-50 transform transition-transform duration-300 md:relative md:translate-x-0"
+        >
+            <div class="p-6 flex items-center justify-between gap-3">
+                <div class="flex items-center gap-3">
+                    <div class="w-8 h-8 rounded bg-gradient-to-tr from-primary to-accent flex items-center justify-center shadow-lg shadow-primary/30">
+                        <i class="ri-brain-line text-white"></i>
+                    </div>
+                    <div>
+                        <h1 class="text-lg font-bold text-white tracking-wider">AI NEXUS</h1>
+                        <p class="text-[10px] text-slate-500 uppercase">V4.3 Pro</p>
+                    </div>
+                </div>
+                <button @click="isSidebarOpen = false" class="text-slate-400 hover:text-white md:hidden">
+                    <i class="ri-close-line text-xl"></i>
+                </button>
+            </div>
+
+            <div class="flex-1 overflow-y-auto custom-scroll px-4 py-2 space-y-8">
+                
+                <div>
+                    <h3 class="text-xs font-semibold text-slate-500 uppercase mb-3 px-2">{{ t.menu_region }}</h3>
+                    <div class="space-y-1">
+                        <button 
+                            v-for="r in regions" :key="r.id"
+                            @click="currentRegion = r.id; currentCategory = 'all'; isSidebarOpen = false;"
+                            class="nav-item w-full text-left px-3 py-2 rounded-r-lg text-slate-400 hover:text-white hover:bg-slate-800/50 transition-all flex items-center gap-2"
+                            :class="{ 'active': currentRegion === r.id }"
+                        >
+                            <i :class="r.icon"></i> {{ t[r.key] }}
+                        </button>
+                    </div>
+                </div>
+
+                <div>
+                    <h3 class="text-xs font-semibold text-slate-500 uppercase mb-3 px-2">{{ t.menu_category }}</h3>
+                    <div class="space-y-1">
+                        <button 
+                            v-for="cat in categories" :key="cat.id"
+                            @click="currentCategory = cat.id; isSidebarOpen = false;"
+                            class="nav-item w-full text-left px-3 py-2 rounded-r-lg text-slate-400 hover:text-white hover:bg-slate-800/50 transition-all flex items-center gap-2"
+                            :class="{ 'active': currentCategory === cat.id }"
+                        >
+                            <i :class="cat.icon"></i> {{ t[cat.key] }}
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="p-4 border-t border-slate-800">
+                <div class="relative">
+                    <button 
+                        @click="isLangPanelOpen = !isLangPanelOpen"
+                        class="w-full flex items-center justify-between bg-slate-800/50 hover:bg-slate-800 p-2 rounded-lg text-slate-300 transition-colors"
+                    >
+                        <span class="flex items-center gap-2"><i class="ri-global-line"></i> {{ languageNames[currentLang] }}</span>
+                        <i :class="isLangPanelOpen ? 'ri-arrow-up-s-line' : 'ri-arrow-down-s-line'"></i>
+                    </button>
+                    <div 
+                        v-if="isLangPanelOpen"
+                        class="absolute bottom-full left-0 w-full mb-2 bg-slate-800 border border-slate-700 rounded-lg shadow-xl overflow-hidden z-50"
+                    >
+                        <button 
+                            v-for="(name, code) in languageNames" :key="code"
+                            @click="currentLang = code; isLangPanelOpen = false"
+                            class="w-full text-left px-4 py-2 hover:bg-primary hover:text-white text-slate-300 block text-xs"
+                            :class="{'bg-primary/10 text-primary': currentLang === code}"
+                        >
+                            {{ name }}
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        <div v-if="isSidebarOpen" @click="isSidebarOpen = false" class="fixed inset-0 bg-black/50 z-40 md:hidden"></div>
+
+        <main class="flex-1 flex flex-col h-full overflow-hidden relative bg-bgDark max-w-full">
+            
+            <header class="h-16 border-b border-slate-800 flex items-center justify-between px-6 bg-bgDark/80 backdrop-blur sticky top-0 z-40">
+                <div class="flex items-center gap-4">
+                    <button @click="isSidebarOpen = true" class="text-slate-400 hover:text-white md:hidden">
+                        <i class="ri-menu-2-line text-xl"></i>
+                    </button>
+                    <span class="md:hidden text-lg font-bold text-white">AI NEXUS</span>
+                    <span class="hidden md:block text-slate-400 text-sm">
+                        {{ t.status_showing }} <strong class="text-white">{{ filteredTools.length }}</strong> {{ t.status_tools }}
+                    </span>
+                </div>
+
+                <div class="relative w-48 md:w-96">
+                    <i class="ri-search-2-line absolute left-3 top-1/2 -translate-y-1/2 text-slate-500"></i>
+                    <input 
+                        v-model="searchQuery"
+                        type="text" 
+                        :placeholder="t.search_placeholder" 
+                        class="w-full bg-slate-800 border border-slate-700 rounded-full py-2 pl-10 pr-4 text-sm text-white focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all placeholder-slate-500"
+                    >
+                </div>
+            </header>
+
+            <div class="flex-1 overflow-y-auto custom-scroll p-6">
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-6">
+                    <div 
+                        v-for="tool in filteredTools" 
+                        :key="tool.id"
+                        class="glass-card rounded-xl p-5 flex flex-col transition-all duration-300 group relative"
+                    >
+                        <div class="absolute top-0 right-0">
+                            <span v-if="tool.isCN" class="bg-red-500/10 text-red-400 text-[10px] font-bold px-2 py-1 rounded-bl-lg border-b border-l border-red-500/20">CN</span>
+                            <span v-else class="bg-blue-500/10 text-blue-400 text-[10px] font-bold px-2 py-1 rounded-bl-lg border-b border-l border-blue-500/20">GLOBAL</span>
+                        </div>
+
+                        <div class="flex items-center gap-4 mb-3">
+                            <div class="w-10 h-10 rounded-lg bg-slate-800 flex items-center justify-center text-xl shadow-inner">
+                                {{ tool.emoji }}
+                            </div>
+                            <div>
+                                <h3 class="text-base font-bold text-white group-hover:text-primary transition-colors line-clamp-1">{{ tool.name }}</h3>
+                                <span class="text-[10px] text-slate-400 bg-slate-800 px-1.5 py-0.5 rounded border border-slate-700/50">{{ tool.model }}</span>
+                            </div>
+                        </div>
+
+                        <p class="text-xs text-slate-400 mb-4 flex-grow leading-relaxed line-clamp-3">
+                            {{ tool.desc }}
+                        </p>
+
+                        <div class="flex justify-between items-center mt-auto pt-3 border-t border-slate-700/50">
+                            <div class="flex text-yellow-500 text-[10px]">
+                                <i v-for="n in 5" :key="n" :class="n <= Math.floor(tool.rating) ? 'ri-star-fill' : 'ri-star-line'"></i>
+                                <span class="ml-1 text-slate-500">{{ tool.rating }}</span>
+                            </div>
+                            <a :href="tool.url" target="_blank" class="flex items-center gap-1 text-xs font-medium text-primary hover:text-white transition-colors">
+                                {{ t.btn_visit }} <i class="ri-arrow-right-up-line"></i>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+
+                <div v-if="filteredTools.length === 0" class="h-full flex flex-col items-center justify-center text-slate-500 min-h-[300px]">
+                    <i class="ri-ghost-line text-5xl mb-4 opacity-50"></i>
+                    <p>{{ t.no_result }}</p>
+                </div>
+
+            </div>
+        </main>
+
+    </div>
+
+    <script>
+        const { createApp } = Vue
+
+        // 语言包字典 (保持 V4.2 的内容)
+        const i18n = {
+            'zh-CN': {
+                menu_region: '地区筛选',
+                menu_category: '应用领域',
+                region_all: '全球所有',
+                region_cn: '国产模型',
+                region_global: '海外模型',
+                cat_all: '全部工具',
+                cat_chat: '聊天助手 (大模型)',
+                cat_multimodal: '多模态/跨域',
+                cat_code: '编程开发',
+                cat_image: '视觉绘画 (生图)',
+                cat_video: '视频生成',
+                cat_audio: '音乐音频',
+                cat_search: '学术搜索',
+                cat_productivity: '效率工具',
+                search_placeholder: '搜索模型名称、功能...',
+                status_showing: '正在展示',
+                status_tools: '个顶级 AI 工具',
+                btn_visit: '访问',
+                no_result: '未找到匹配的 AI 工具'
+            },
+            'zh-TW': {
+                menu_region: '地區篩選',
+                menu_category: '應用領域',
+                region_all: '全球所有',
+                region_cn: '國產模型',
+                region_global: '海外模型',
+                cat_all: '全部工具',
+                cat_chat: '聊天助手 (大模型)',
+                cat_multimodal: '多模態/跨域',
+                cat_code: '編程開發',
+                cat_image: '視覺繪畫 (生圖)',
+                cat_video: '視頻生成',
+                cat_audio: '音樂音頻',
+                cat_search: '學術搜索',
+                cat_productivity: '效率工具',
+                search_placeholder: '搜索模型名稱、功能...',
+                status_showing: '正在展示',
+                status_tools: '個頂級 AI 工具',
+                btn_visit: '訪問',
+                no_result: '未找到匹配的 AI 工具'
+            },
+            'en': {
+                menu_region: 'Region Filter',
+                menu_category: 'Application Category',
+                region_all: 'All Regions',
+                region_cn: 'China Only',
+                region_global: 'Global',
+                cat_all: 'All Tools',
+                cat_chat: 'Chat Bots (LLMs)',
+                cat_multimodal: 'Multimodal/Cross-Domain',
+                cat_code: 'Coding & Dev',
+                cat_image: 'Image Gen',
+                cat_video: 'Video Gen',
+                cat_audio: 'Audio/Music',
+                cat_search: 'Search & Academic',
+                cat_productivity: 'Productivity',
+                search_placeholder: 'Search models, features...',
+                status_showing: 'Showing',
+                status_tools: 'Top AI Tools',
+                btn_visit: 'Visit',
+                no_result: 'No AI tools found'
+            },
+            'ja': {
+                menu_region: '地域フィルタ',
+                menu_category: 'アプリケーション',
+                region_all: 'すべて',
+                region_cn: '中国製',
+                region_global: 'グローバル',
+                cat_all: 'すべてのツール',
+                cat_chat: 'チャット (LLM)',
+                cat_multimodal: 'マルチモーダル',
+                cat_code: 'コーディング',
+                cat_image: '画像生成',
+                cat_video: '動画生成',
+                cat_audio: '音楽・音声',
+                cat_search: '検索・学術',
+                cat_productivity: '生産性向上',
+                search_placeholder: 'モデルを検索...',
+                status_showing: '表示中:',
+                status_tools: '個のツール',
+                btn_visit: '訪問',
+                no_result: 'ツールが見つかりません'
+            },
+            'ko': {
+                menu_region: '지역 필터',
+                menu_category: '애플리케이션',
+                region_all: '전체',
+                region_cn: '중국 모델',
+                region_global: '글로벌',
+                cat_all: '모든 도구',
+                cat_chat: '챗봇 (LLM)',
+                cat_multimodal: '멀티모달/교차 도메인',
+                cat_code: '코딩 및 개발',
+                cat_image: '이미지 생성',
+                cat_video: '비디오 생성',
+                cat_audio: '오디오/음악',
+                cat_search: '검색 및 학술',
+                cat_productivity: '생산성',
+                search_placeholder: '모델 검색...',
+                status_showing: '표시 중:',
+                status_tools: '개의 도구',
+                btn_visit: '방문',
+                no_result: '도구를 찾을 수 없습니다'
+            },
+            'fr': {
+                menu_region: 'Filtre Région',
+                menu_category: 'Catégorie Appli',
+                region_all: 'Tous',
+                region_cn: 'Chine',
+                region_global: 'Global',
+                cat_all: 'Tous',
+                cat_chat: 'Chatbots (LLM)',
+                cat_multimodal: 'Multimodal/Transverse',
+                cat_code: 'Codage',
+                cat_image: 'Image',
+                cat_video: 'Vidéo',
+                cat_audio: 'Audio',
+                cat_search: 'Recherche',
+                cat_productivity: 'Productivité',
+                search_placeholder: 'Rechercher...',
+                status_showing: 'Affichage de',
+                status_tools: 'outils',
+                btn_visit: 'Visiter',
+                no_result: 'Aucun outil trouvé'
+            }
+        };
+
+        createApp({
+            data() {
+                return {
+                    searchQuery: '', 
+                    currentCategory: 'all', 
+                    currentRegion: 'all',
+                    currentLang: 'zh-CN',
+                    isLangPanelOpen: false, // 语言切换面板开关
+                    isSidebarOpen: false,    // 移动端侧边栏开关 (NEW)
+                    languageNames: {
+                        'zh-CN': '简体中文',
+                        'zh-TW': '繁體中文',
+                        'en': 'English',
+                        'ja': '日本語',
+                        'ko': '한국어',
+                        'fr': 'Français'
+                    },
+                    // 侧边栏配置
+                    regions: [
+                        { id: 'all', key: 'region_all', icon: 'ri-earth-line' },
+                        { id: 'cn', key: 'region_cn', icon: 'ri-flag-fill' },
+                        { id: 'global', key: 'region_global', icon: 'ri-global-line' },
+                    ],
+                    categories: [
+                        { id: 'all', key: 'cat_all', icon: 'ri-apps-2-line' }, 
+                        { id: 'chat', key: 'cat_chat', icon: 'ri-chat-smile-3-line' }, 
+                        { id: 'multimodal', key: 'cat_multimodal', icon: 'ri-magic-line' },
+                        { id: 'code', key: 'cat_code', icon: 'ri-code-box-line' }, 
+                        { id: 'image', key: 'cat_image', icon: 'ri-image-ai-line' }, 
+                        { id: 'video', key: 'cat_video', icon: 'ri-movie-line' }, 
+                        { id: 'audio', key: 'cat_audio', icon: 'ri-headphone-line' }, 
+                        { id: 'search', key: 'cat_search', icon: 'ri-search-eye-line' }, 
+                        { id: 'productivity', key: 'cat_productivity', icon: 'ri-rocket-line' },
+                    ],
+                    // 数据库 (保持 V4.2 的内容)
+                    tools: [
+                        // --- Global Chat (LLM) ---
+                        { id: 1, name: 'ChatGPT', category: 'chat', model: 'GPT-4o', desc: '目前的综合王者。多模态交互流畅，语音、视觉、逻辑均为顶尖。', rating: 5.0, isCN: false, url: 'https://chatgpt.com', emoji: '🤖' },
+                        { id: 2, name: 'Claude', category: 'chat', model: 'Claude 3.5 Sonnet', desc: '逻辑与代码的神。细腻语义理解和长文写作超越 GPT-4。', rating: 5.0, isCN: false, url: 'https://claude.ai', emoji: '🧠' },
+                        { id: 3, name: 'Gemini', category: 'chat', model: '1.5 Pro', desc: '超长上下文（2M token），深度整合谷歌生态。', rating: 4.6, isCN: false, url: 'https://gemini.google.com', emoji: '💎' },
+                        { id: 24, name: 'Llama 3', category: 'chat', model: '8B/70B', desc: 'Meta 开源的顶尖模型，性能卓越且可商用，是开源社区基石。', rating: 4.8, isCN: false, url: 'https://llama.meta.com', emoji: '🦙' },
+                        { id: 34, name: 'Grok', category: 'chat', model: 'Grok 2', desc: '马斯克xAI出品，擅长黑色幽默和实时信息检索。', rating: 4.5, isCN: false, url: 'https://grok.x.ai', emoji: '👽' },
+                        
+                        // --- CN Chat (LLM) ---
+                        { id: 4, name: 'DeepSeek (深度求索)', category: 'chat', model: 'V2.5', desc: '国产开源之光。编码和数学能力硬刚 GPT-4，API 极其便宜。', rating: 5.0, isCN: true, url: 'https://chat.deepseek.com', emoji: '🐳' },
+                        { id: 5, name: 'Kimi 助手', category: 'chat', model: 'Moonshot', desc: '长文档专家。擅长分析几十万字的财报、合同，体验丝滑。', rating: 4.8, isCN: true, url: 'https://kimi.moonshot.cn', emoji: '🌙' },
+                        { id: 6, name: '通义千问', category: 'chat', model: 'Qwen-2.5-Max', desc: '阿里出品，能力全面，开源社区活跃度高，数学能力强。', rating: 4.7, isCN: true, url: 'https://tongyi.aliyun.com', emoji: '🦊' },
+                        { id: 14, name: '豆包 (Doubao)', category: 'chat', model: 'Doubao-Pro', desc: '字节跳动出品，语音交互体验极佳，日常助手首选。', rating: 4.8, isCN: true, url: 'https://www.doubao.com', emoji: '🥟' },
+                        { id: 22, name: 'Baichuan (百川)', category: 'chat', model: 'Baichuan-4', desc: '中文语境下理解能力强，是国内最早的开源大模型之一。', rating: 4.6, isCN: true, url: 'https://www.baichuan-ai.com', emoji: '🌊' },
+                        { id: 23, name: 'InternLM (书生)', category: 'chat', model: 'InternLM3', desc: '上汽集团和商汤联合开发，在多模态、Agent 能力上突出。', rating: 4.5, isCN: true, url: 'https://www.intern-lm.com', emoji: '📚' },
+                        
+                        // --- Multimodal / Cross-Domain ---
+                        { id: 35, name: 'Veo (Google DeepMind)', category: 'multimodal', model: 'Veo 3', desc: 'Google顶尖视频生成模型，能生成高质量、物理世界理解准确的电影级片段。', rating: 5.0, isCN: false, url: 'https://deepmind.google/technologies/veo/', emoji: '🎬' },
+                        { id: 36, name: 'NanoBanana (Gemini Image)', category: 'multimodal', model: 'Nano Banana Pro', desc: 'Gemini AI 图像生成器，用于快速生成Logo、插画、证件照等。', rating: 4.7, isCN: false, url: 'https://gemini.google/tw/overview/image-generation/', emoji: '🍌' },
+                        { id: 37, name: 'NotebookLM', category: 'multimodal', model: 'Gemini 1.5 Pro', desc: 'Google AI 笔记助手，深度整合上传的文件、文章和视频内容，进行总结、问答。', rating: 4.8, isCN: false, url: 'https://notebooklm.google', emoji: '📓' },
+                        { id: 38, name: 'Poe', category: 'multimodal', model: '聚合平台', desc: 'Quora开发的AI聚合平台，可同时调用和对比包括GPT、Claude、Llama等数十个模型。', rating: 4.5, isCN: false, url: 'https://poe.com', emoji: '🔗' },
+
+                        // --- Code ---
+                        { id: 7, name: 'Cursor', category: 'code', model: 'IDE + Claude', desc: '智能代码编辑器。智能预测代码，大幅提升开发效率。', rating: 5.0, isCN: false, url: 'https://cursor.com', emoji: '🖱️' },
+                        { id: 8, name: 'GitHub Copilot', category: 'code', model: 'OpenAI Codex', desc: '微软出品，老牌稳定，企业级开发首选插件。', rating: 4.6, isCN: false, url: 'https://github.com/features/copilot', emoji: '✈️' },
+                        { id: 25, name: 'Code Llama', category: 'code', model: '70B', desc: 'Meta 基于 Llama 3 优化的代码生成和推理模型。', rating: 4.7, isCN: false, url: 'https://ai.meta.com/llama/code-llama/', emoji: '💻' },
+                        { id: 39, name: 'Tabby', category: 'code', model: 'Tabby 70B', desc: '开源、自部署的代码补全工具，支持私有化部署。', rating: 4.6, isCN: false, url: 'https://tabby.studio/', emoji: '🐱' },
+                        
+                        // --- Image ---
+                        { id: 9, name: 'Midjourney', category: 'image', model: 'V6.1', desc: '艺术性天花板。光影、质感是目前最强的。', rating: 5.0, isCN: false, url: 'https://www.midjourney.com', emoji: '🎨' },
+                        { id: 27, name: 'Stable Diffusion', category: 'image', model: 'SDXL Turbo', desc: '图像生成领域的开源基石，速度极快，社区生态庞大。', rating: 4.7, isCN: false, url: 'https://stability.ai', emoji: '📷' },
+                        { id: 28, name: 'DALL·E', category: 'image', model: 'DALL·E 3', desc: '与 ChatGPT 深度集成，擅长生成各种风格的插画和海报。', rating: 4.8, isCN: false, url: 'https://openai.com/dall-e', emoji: '🖼️' },
+                        { id: 11, name: '即梦 (Jimeng)', category: 'image', model: 'SDXL Optimized', desc: '字节出品的图像视频生成平台，中文理解能力极佳。', rating: 4.7, isCN: true, url: 'https://jimeng.jianying.com', emoji: '🖌️' },
+
+                        // --- Video ---
+                        { id: 16, name: 'Runway', category: 'video', model: 'Gen-3 Alpha', desc: '视频生成领域的领头羊，物理模拟效果惊人。', rating: 4.9, isCN: false, url: 'https://runwayml.com', emoji: '🎞️' },
+                        { id: 17, name: 'Luma Dream', category: 'video', model: 'Dream Machine', desc: '免费且生成速度极快，视频一致性保持得很好。', rating: 4.8, isCN: false, url: 'https://lumalabs.ai/dream-machine', emoji: '🎥' },
+                        { id: 18, name: '可灵 AI (Kling)', category: 'video', model: '1.5 Pro', desc: '快手出品，支持5秒/10秒长视频，动作连贯性世界领先。', rating: 4.9, isCN: true, url: 'https://klingai.kuaishou.com', emoji: '🎬' },
+                        { id: 29, name: 'Pika', category: 'video', model: '1.0', desc: '专注于动画和风格化视频生成，可对现有素材进行编辑。', rating: 4.7, isCN: false, url: 'https://www.pika.art', emoji: '👾' },
+                        { id: 30, name: 'Sora', category: 'video', model: 'N/A', desc: 'OpenAI 尚未开放的视频模型，被认为是视频生成领域的里程碑。', rating: 5.0, isCN: false, url: 'https://openai.com/sora', emoji: '🌟' },
+                        { id: 40, name: 'Genie (Google)', category: 'video', model: 'Genie 3', desc: '能通过单句话指令生成一个可探索的虚拟世界或游戏关卡。', rating: 4.8, isCN: false, url: 'https://deepmind.google/technologies/genie/', emoji: '🎮' },
+                        
+                        // --- Audio ---
+                        { id: 19, name: 'Suno', category: 'audio', model: 'V3.5', desc: 'AI 音乐界的 ChatGPT，能生成包含人声的完整歌曲。', rating: 5.0, isCN: false, url: 'https://suno.com', emoji: '🎵' },
+                        { id: 31, name: 'ElevenLabs', category: 'audio', model: 'Prime', desc: '顶级的 AI 语音克隆和文本转语音 (TTS) 服务。', rating: 4.9, isCN: false, url: 'https://elevenlabs.io', emoji: '🎤' },
+                        { id: 41, name: 'MusicGen', category: 'audio', model: 'Meta OSS', desc: 'Meta 开源的音乐生成模型，控制力强，可用于商业用途。', rating: 4.6, isCN: false, url: 'https://ai.meta.com/blog/musicgen/', emoji: '🎶' },
+
+                        // --- Search ---
+                        { id: 12, name: 'Perplexity', category: 'search', model: 'PPLX', desc: '答案引擎。不给链接列表，直接给答案并标注来源。', rating: 5.0, isCN: false, url: 'https://perplexity.ai', emoji: '🔎' },
+                        { id: 13, name: '秘塔搜索', category: 'search', model: 'MetaSo', desc: '国产学术搜索，无广告，结构化整合信息，写论文神器。', rating: 4.7, isCN: true, url: 'https://metaso.cn', emoji: '📚' },
+                        { id: 32, name: 'Google Search', category: 'search', model: 'SGE', desc: '谷歌搜索生成式体验，直接在搜索结果中提供 AI 总结。', rating: 4.5, isCN: false, url: 'https://google.com/search/experiments/sge', emoji: '🔍' },
+
+                        // --- Productivity ---
+                        { id: 33, name: 'Notion AI', category: 'productivity', model: 'GPT-4', desc: '深度集成于 Notion，用于文档总结、写作和表格生成。', rating: 4.6, isCN: false, url: 'https://www.notion.so/product/ai', emoji: '📝' },
+                        { id: 42, name: 'Tome', category: 'productivity', model: 'DALL-E + GPT', desc: 'AI 驱动的演示文稿 (PPT) 生成工具，一键生成完整故事板和视觉。', rating: 4.7, isCN: false, url: 'https://beta.tome.app', emoji: '💡' },
+                    ]
+                }
+            },
+            computed: {
+                // 获取当前语言文本
+                t() {
+                    return i18n[this.currentLang];
+                },
+                filteredTools() {
+                    let result = this.tools;
+
+                    // 1. 地区筛选 (Region Filter)
+                    if (this.currentRegion !== 'all') {
+                        const isCN = this.currentRegion === 'cn';
+                        result = result.filter(t => t.isCN === isCN);
+                    }
+
+                    // 2. 类别筛选 (Category Filter)
+                    if (this.currentCategory !== 'all') {
+                        result = result.filter(t => t.category === this.currentCategory);
+                    }
+
+                    // 3. 搜索筛选 (Search)
+                    if (this.searchQuery) {
+                        const query = this.searchQuery.toLowerCase();
+                        result = result.filter(t => 
+                            t.name.toLowerCase().includes(query) || 
+                            t.desc.toLowerCase().includes(query) ||
+                            t.model.toLowerCase().includes(query)
+                        );
+                    }
+
+                    // 4. 排序 (Sort by Rating)
+                    return result.sort((a, b) => b.rating - a.rating);
+                }
+            }
+        }).mount('#app')
+    </script>
+</body>
+</html>
